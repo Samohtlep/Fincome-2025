@@ -106,11 +106,36 @@ class Server:
                 excel_path = f"datasets/{dataset['filename'].replace('.csv', '.xlsx')}"
                 df.to_excel(excel_path, index=False)
 
+                # Defer the deletion of the Excel
                 background_tasks.add_task(os.remove, excel_path)
-
 
                 return FileResponse(excel_path, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=os.path.basename(excel_path))
 
+
+            except HTTPException as e:
+                raise e
+            except RuntimeError as e:
+                raise HTTPException(status_code=500, detail=f"Server error: {e}")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+
+        @self.__app.get("/datasets/{dataset_id}/stats")
+        async def get_dataset_stats(dataset_id: int):
+            try:
+                dataset = self.__db.get_dataset_by_id(dataset_id)
+                if not dataset:
+                    raise HTTPException(status_code=404, detail=f"Dataset with ID {dataset_id} not found.")
+
+                # Read the dataset into a DataFrame
+                df = pd.read_csv(dataset['path'])
+
+                # Generate stats using pandas describe()
+                stats = df.describe().to_dict()
+
+                return JSONResponse(status_code=200, content=stats)
+
+            except HTTPException as e:
+                raise e 
             except RuntimeError as e:
                 raise HTTPException(status_code=500, detail=f"Server error: {e}")
             except Exception as e:

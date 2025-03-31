@@ -33,3 +33,5 @@ DELETE http://localhost:5000/datasets/2
 # depending on how you send the request, you may need to save the response body
 GET http://localhost:5000/datasets/2/excel
 ###
+
+GET http://localhost:5000/datasets/1/stats
