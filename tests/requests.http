@@ -1,0 +1,21 @@
+GET http://localhost:5000/datasets
+
+###
+
+GET http://localhost:5000/datasets/2
+
+###
+POST http://localhost:5000/datasets
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="dataset"; filename="sample_data_1.csv"
+Content-Type: text/csv
+
+< ./tests/datasets/sample_data_1.csv
+--boundary--
+
+###
+DELETE http://localhost:5000/datasets/2
+
+###
