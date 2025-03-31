@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.responses import FileResponse, JSONResponse
 import uvicorn
 from db import DataBase
@@ -91,6 +91,31 @@ class Server:
             except Exception as e:
                 # Catch all other unexpected exceptions and return a proper 500 error
                 raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+
+        @self.__app.get("/datasets/{dataset_id}/excel")
+        async def export_as_excel(dataset_id: int, background_tasks: BackgroundTasks):
+            try:
+                dataset = self.__db.get_dataset_by_id(dataset_id)
+                if not dataset:
+                    raise HTTPException(status_code=404, detail=f"Dataset with ID {dataset_id} not found.")
+
+                # Read the dataset into a DataFrame
+                df = pd.read_csv(dataset['path'])
+
+                # Save the DataFrame to an Excel file
+                excel_path = f"datasets/{dataset['filename'].replace('.csv', '.xlsx')}"
+                df.to_excel(excel_path, index=False)
+
+                background_tasks.add_task(os.remove, excel_path)
+
+
+                return FileResponse(excel_path, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=os.path.basename(excel_path))
+
+            except RuntimeError as e:
+                raise HTTPException(status_code=500, detail=f"Server error: {e}")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+
 
     def run(self):
         # Run the FastAPI application
