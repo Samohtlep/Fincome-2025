@@ -1,10 +1,15 @@
+# Request to get infos about all datasets
 GET http://localhost:5000/datasets
 
 ###
-
-GET http://localhost:5000/datasets/2
+# Request to get infos about a specific dataset
+GET http://localhost:5000/datasets/1
 
 ###
+# Request to get the add a new dataset to the server
+# The dataset is a CSV file, and the server expects it to be sent as multipart/form-data
+
+# For the first example dataset
 POST http://localhost:5000/datasets
 Content-Type: multipart/form-data; boundary=boundary
 
@@ -16,6 +21,7 @@ Content-Type: text/csv
 --boundary--
 
 ###
+# For the second example dataset
 POST http://localhost:5000/datasets
 Content-Type: multipart/form-data; boundary=boundary
 
@@ -27,16 +33,19 @@ Content-Type: text/csv
 --boundary--
 
 ###
-DELETE http://localhost:5000/datasets/2
+# Request to remove a dataset from the server
+DELETE http://localhost:5000/datasets/1
 
 ###
-# depending on how you send the request, you may need to save the response body
-GET http://localhost:5000/datasets/2/excel
+# Request to get a dataset as a excel file
+# Depending on how you send the request, you may need to save the response body
+GET http://localhost:5000/datasets/1/excel
 ###
-
+# Request to gets the statistics of the numerical columns of a dataset
 GET http://localhost:5000/datasets/1/stats
 
 ###
+# Request to get the plot of the numerical columns of a dataset as a PDF file
 # depending on how you send the request, you may need to save the response body
-GET http://localhost:5000/datasets/2/plot
+GET http://localhost:5000/datasets/1/plot
 ###

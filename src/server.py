@@ -1,7 +1,9 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
-from fastapi.responses import FileResponse, JSONResponse
-import uvicorn
 from db import DataBase
+
+from fastapi import FastAPI, HTTPException, UploadFile, BackgroundTasks, File
+from fastapi.responses import JSONResponse, FileResponse
+import uvicorn
+
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
@@ -10,17 +12,21 @@ from matplotlib.backends.backend_pdf import PdfPages
 class Server:
     def __init__(self, port : int = 5000):
         # Initialize the FastAPI application and the database connection
+        # port : port number for the FastAPI server
 
-        os.makedirs("datasets", exist_ok=True)  # Ensure the 'datasets' directory exists
+        # Create the datasets directory if it doesn't exist
+        os.makedirs("datasets", exist_ok=True)  
 
-
+        # Initialize the FastAPI application
         self.__app = FastAPI()
         self.__app.title = "Dataset API"
         self.__app.description = "API for managing datasets"
-        self.__app.version = "1.0.0"
-        self.__db = DataBase()
         self.__setup_routes()
 
+        # Initialize the database connection
+        self.__db = DataBase()
+
+        # Set the host and port for the FastAPI server
         self.__host = "localhost"
         self.__port = port
 
@@ -28,9 +34,9 @@ class Server:
         # Define the API endpoints and their corresponding methods
         @self.__app.get("/datasets")
         async def get_datasets():
+            # Retrieve all datasets from the database
+            # Returns a list of datasets
             try:
-                # Retrieve all datasets from the database
-                # Returns a list of datasets
                 datasets = self.__db.get_datasets()
                 if not datasets:
                     raise HTTPException(status_code=404, detail="No datasets found in the database.")
@@ -40,7 +46,11 @@ class Server:
 
         @self.__app.get("/datasets/{dataset_id}")
         async def get_dataset(dataset_id: int):
+            # Retrieve a dataset by its ID
+            # dataset_id : a valid dataset ID
+            # Returns a dictionary representing the dataset
             try:
+                # Check if the dataset exists
                 dataset = self.__db.get_dataset_by_id(dataset_id)
                 if not dataset:
                     raise HTTPException(status_code=404, detail=f"Dataset with ID {dataset_id} not found.")
@@ -50,18 +60,21 @@ class Server:
 
         @self.__app.post("/datasets")
         async def import_dataset(dataset: UploadFile = File(...)):  
+            # Import a dataset from a CSV file
+            # dataset : the uploaded file CSV file
+            # Returns a dictionary containing the filename, size, and path of the dataset
             try:
                 file_location = f"datasets/{dataset.filename}"
                 with open(file_location, "wb+") as file_object:
                     file_object.write(dataset.file.read())
 
                 # Read it with pandas
-                DF = pd.read_csv(file_location)
+                df = pd.read_csv(file_location)
 
                 # Save the dataset to the database
-                self.__db.insert_dataset(dataset.filename, file_location, len(DF))
+                self.__db.insert_dataset(dataset.filename, file_location, len(df))
 
-                return {"filename": dataset.filename, "size": len(DF), "path": file_location}  
+                return {"filename": dataset.filename, "size": len(df)}  
             except ValueError as e:
                 raise HTTPException(status_code=400, detail=f"Bad request: {e}")
             except RuntimeError as e:
@@ -71,7 +84,11 @@ class Server:
 
         @self.__app.delete("/datasets/{dataset_id}")
         async def remove_dataset(dataset_id: int):
+            # Remove a dataset by its ID
+            # dataset_id : a valid dataset ID
+            # Returns a success message if the dataset is removed successfully
             try:
+                # Check if the dataset exists
                 dataset = self.__db.get_dataset_by_id(dataset_id)
                 if not dataset:
                     raise HTTPException(status_code=404, detail=f"Dataset with ID {dataset_id} not found.")
@@ -96,7 +113,11 @@ class Server:
 
         @self.__app.get("/datasets/{dataset_id}/excel")
         async def export_as_excel(dataset_id: int, background_tasks: BackgroundTasks):
+            # Export a dataset as an Excel file
+            # dataset_id : a valid dataset ID
+            # Returns the Excel file as a response
             try:
+                # Check if the dataset exists
                 dataset = self.__db.get_dataset_by_id(dataset_id)
                 if not dataset:
                     raise HTTPException(status_code=404, detail=f"Dataset with ID {dataset_id} not found.")
@@ -123,7 +144,11 @@ class Server:
 
         @self.__app.get("/datasets/{dataset_id}/stats")
         async def get_dataset_stats(dataset_id: int):
+            # Get statistics of the numerical columns in a dataset
+            # dataset_id : a valid dataset ID
+            # Returns a dictionary containing the statistics of the dataset
             try:
+                # Check if the dataset exists
                 dataset = self.__db.get_dataset_by_id(dataset_id)
                 if not dataset:
                     raise HTTPException(status_code=404, detail=f"Dataset with ID {dataset_id} not found.")
@@ -145,8 +170,11 @@ class Server:
 
         @self.__app.get("/datasets/{dataset_id}/plot")
         async def plot_dataset(dataset_id: int, background_tasks: BackgroundTasks):
-            # generate and return a PDF containing a list of histograms of all the numerical columns in the dataset
+            # Generate histograms for all numerical columns in a dataset and export them as a PDF
+            # dataset_id : a valid dataset ID
+            # Returns a PDF file containing the histograms
             try:
+                # Check if the dataset exists
                 dataset = self.__db.get_dataset_by_id(dataset_id)
                 if not dataset:
                     raise HTTPException(status_code=404, detail=f"Dataset with ID {dataset_id} not found.")
@@ -156,7 +184,7 @@ class Server:
 
                 # Generate histograms for all numerical columns
                 pdf_path = f"datasets/histograms_of_{dataset['filename'].replace('.csv', '.pdf')}"
-                with PdfPages(pdf_path) as pdf:
+                with PdfPages(pdf_path) as pdf: # Create a PDF file to save the histograms
                     for column in df.select_dtypes(include=['float64', 'int64']).columns:
                         plt.figure(figsize=(10, 6))
                         plt.hist(df[column], bins=15, edgecolor='black')
