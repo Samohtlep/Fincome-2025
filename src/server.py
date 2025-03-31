@@ -4,6 +4,8 @@ import uvicorn
 from db import DataBase
 import pandas as pd
 import os
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 class Server:
     def __init__(self, port : int = 5000):
@@ -133,6 +135,41 @@ class Server:
                 stats = df.describe().to_dict()
 
                 return JSONResponse(status_code=200, content=stats)
+
+            except HTTPException as e:
+                raise e 
+            except RuntimeError as e:
+                raise HTTPException(status_code=500, detail=f"Server error: {e}")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+
+        @self.__app.get("/datasets/{dataset_id}/plot")
+        async def plot_dataset(dataset_id: int, background_tasks: BackgroundTasks):
+            # generate and return a PDF containing a list of histograms of all the numerical columns in the dataset
+            try:
+                dataset = self.__db.get_dataset_by_id(dataset_id)
+                if not dataset:
+                    raise HTTPException(status_code=404, detail=f"Dataset with ID {dataset_id} not found.")
+
+                # Read the dataset into a DataFrame
+                df = pd.read_csv(dataset['path'])
+
+                # Generate histograms for all numerical columns
+                pdf_path = f"datasets/histograms_of_{dataset['filename'].replace('.csv', '.pdf')}"
+                with PdfPages(pdf_path) as pdf:
+                    for column in df.select_dtypes(include=['float64', 'int64']).columns:
+                        plt.figure(figsize=(10, 6))
+                        plt.hist(df[column], bins=15, edgecolor='black')
+                        plt.title(column)
+                        plt.ylabel("Frequency")
+                        plt.grid(True)
+                        pdf.savefig()  # Save the current figure to the PDF
+                        plt.close()  # Close the figure to free memory
+
+                # Defer the deletion of the PDF
+                background_tasks.add_task(os.remove, pdf_path)
+
+                return FileResponse(pdf_path, media_type='application/pdf', filename=os.path.basename(pdf_path))
 
             except HTTPException as e:
                 raise e 
